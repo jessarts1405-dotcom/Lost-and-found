@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Achados e Perdidos — Servidor por Escola</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        :root { --primaria: #2563eb; --escuro: #1e293b; --claro: #f8fafc; --sucesso: #16a34a; --aviso: #f59e0b; --erro: #dc2626; --borda: #e2e8f0; }
+        body { background: #f1f5f9; color: var(--escuro); min-height: 100vh; }
+        .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+        header { background: linear-gradient(135deg, #1e40af, #3b82f6); color: white; padding: 22px; border-radius: 14px; margin-bottom: 24px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .servidor-tag { display: inline-block; background: rgba(255,255,255,0.25); padding: 6px 16px; border-radius: 20px; margin-top: 10px; font-weight: 600; font-size: 15px; }
+        .navegacao { display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+        .nav-btn { padding: 10px 20px; border: none; background: white; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .nav-btn.ativo { background: var(--primaria); color: white; box-shadow: 0 2px 6px rgba(37,99,235,0.3); }
+        .nav-btn:hover { transform: translateY(-2px); }
+        .pagina { display: none; }
+        .pagina.visivel { display: block; }
+        .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 20px; }
+        .grupo-form { margin-bottom: 16px; }
+        label { display: block; margin-bottom: 6px; font-weight: 500; }
+        input, textarea, select { width: 100%; padding: 10px; border: 1px solid var(--borda); border-radius: 6px; font-size: 15px; }
+        input.codigo { font-size: 24px; letter-spacing: 8px; text-align: center; font-weight: bold; }
+        button { padding: 12px 24px; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; font-weight: 500; transition: opacity 0.2s; }
+        .btn-principal { background: var(--primaria); color: white; }
+        .btn-sucesso { background: var(--sucesso); color: white; }
+        .btn-aviso { background: var(--aviso); color: white; }
+        .btn-erro { background: var(--erro); color: white; }
+        button:hover { opacity: 0.9; }
+        .mensagem { padding: 12px; border-radius: 6px; margin: 12px 0; display: none; }
+        .mensagem.sucesso { background: #dcfce7; color: #166534; display: block; }
+        .mensagem.erro { background: #fee2e2; color: #991b1b; display: block; }
+        .mensagem.aviso { background: #fef3c7; color: #92400e; display: block; }
+        .grade-objetos { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .card-objeto { border: 1px solid var(--borda); border-radius: 10px; overflow: hidden; transition: box-shadow 0.2s; }
+        .card-objeto:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .card-objeto img { width: 100%; height: 160px; object-fit: cover; background: #f1f5f9; }
+        .card-conteudo { padding: 14px; }
+        .etiqueta { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+        .etiqueta.perdido { background: #fee2e2; color: #991b1b; }
+        .etiqueta.encontrado { background: #dbeafe; color: #1e40af; }
+        .expira { font-size: 13px; color: #64748b; margin-top: 8px; }
+        .expira.urgente { color: var(--erro); font-weight: 600; }
+        .area-chat { height: 400px; overflow-y: auto; border: 1px solid var(--borda); border-radius: 10px; padding: 16px; margin-bottom: 12px; background: white; }
+        .mensagem-chat { margin-bottom: 14px; padding: 10px 14px; border-radius: 18px; max-width: 75%; position: relative; }
+        .mensagem-chat.enviada { background: var(--primaria); color: white; margin-left: auto; border-bottom-right-radius: 4px; }
+        .mensagem-chat.recebida { background: #e2e8f0; color: var(--escuro); margin-right: auto; border-bottom-left-radius: 4px; }
+        .info-usuario { font-size: 12px; opacity: 0.7; margin-bottom: 4px; }
+        .btn-apagar { position: absolute; top: 4px; right: 8px; background: transparent; border: none; color: rgba(255,255,255,0.7); font-size: 18px; padding: 0; width: 24px; height: 24px; line-height: 24px; text-align: center; border-radius: 50%; cursor: pointer; }
+        .btn-apagar:hover { background: rgba(0,0,0,0.2); color: white; }
+        .oculto { display: none !important; }
+        .perfil-item { padding: 10px 0; border-bottom: 1px solid var(--borda); }
+        .instagram { color: var(--primaria); font-weight: 600; text-decoration: none; }
+        .link-recuperar { display: inline-block; margin-top: 10px; color: var(--primaria); text-decoration: none; font-size: 14px; }
+        .link-recuperar:hover { text-decoration: underline; }
+        .caixa-codigo { background: #e0e7ff; padding: 15px; border-radius: 8px; text-align: center; margin: 15px 0; }
+        .codigo-envio { font-size: 28px; font-weight: bold; color: var(--primaria); letter-spacing: 6px; margin: 10px 0; }
+        .passo { border-left: 3px solid var(--primaria); padding-left: 12px; margin-bottom: 20px; }
+        .aviso-servidor { background: #dbeafe; color: #1e40af; padding: 12px; border-radius: 8px; margin-bottom: 18px; font-size: 14px; border-left: 4px solid #3b82f6; }
+        .destaque-servidor { font-weight: 700; color: #1e40af; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>🔍 Achados e Perdidos</h1>
+        <p>Rede Estadual de São Paulo — Sistema Isolado por Escola</p>
+        <div id="caixa-servidor" class="oculto">
+            <div class="servidor-tag">🖥️ Servidor: <span id="nome-servidor-escola"></span></div>
+        </div>
+    </header>
+
+    <div class="navegacao" id="barra-navegacao">
+        <button class="nav-btn" onclick="mostrarPagina('cadastro')" id="btn-cadastro">Cadastro</button>
+        <button class="nav-btn" onclick="mostrarPagina('login')" id="btn-login">Login</button>
+        <button class="nav-btn oculto" onclick="mostrarPagina('objetos')" id="btn-objetos">Objetos</button>
+        <button class="nav-btn oculto" onclick="mostrarPagina('cadastrar-objeto')" id="btn-novo">Publicar</button>
+        <button class="nav-btn oculto" onclick="mostrarPagina('chat')" id="btn-chat">Chat</button>
+        <button class="nav-btn oculto" onclick="mostrarPagina('perfil')" id="btn-perfil">Perfil</button>
+        <button class="nav-btn" onclick="mostrarPagina('sobre')">Sobre Nós</button>
+        <button class="nav-btn oculto btn-erro" onclick="sair()" id="btn-sair">Sair</button>
+    </div>
+
+    <!-- PÁGINA: CADASTRO -->
+    <div class="pagina" id="pagina-cadastro">
+        <div class="card">
+            <h2>📝 Criar Conta</h2>
+            <div class="aviso-servidor">
+                🖥️ <strong>Cada escola tem SEU PRÓPRIO SERVIDOR.</strong><br>
+                Ao informar o nome da sua escola abaixo, você entra no servidor exclusivo dela.<br>
+                <span class="destaque-servidor">Nenhum dado é compartilhado entre escolas.</span>
+            </div>
+            <div id="msg-cadastro" class="mensagem"></div>
+            <div class="grupo-form">
+                <label>Nome completo</label>
+                <input type="text" id="nome" placeholder="Seu nome completo">
+            </div>
+            <div class="grupo-form">
+                <label>Data de nascimento</label>
+                <input type="date" id="nascimento">
+                <small id="idade-mostrar"></small>
+            </div>
+            <div class="grupo-form">
+                <label>E-mail institucional</label>
+                <input type="email" id="email" placeholder="000011...@al.educacao.sp.gov.br">
+            </div>
+            <div class="grupo-form">
+                <label>Nome da sua Escola (comece com E.E / E.M / E.F / E.P)</label>
+                <input type="text" id="escola" placeholder="Ex: E.E Professor Maria da Silva">
+            </div>
+            <div class="grupo-form">
+                <label>Telefone</label>
+                <input type="tel" id="telefone" placeholder="11900001234">
+            </div>
+            <div class="grupo-form">
+                <label>Senha (mínimo 6 caracteres)</label>
+                <input type="password" id="senha">
+            </div>
+            <button class="btn-principal" onclick="cadastrar()">✅ Entrar no Servidor da Minha Escola</button>
+        </div>
+    </div>
+
+    <!-- PÁGINA: LOGIN -->
+    <div class="pagina" id="pagina-login">
+        <div class="card">
+            <h2>🔐 Acessar Servidor da Escola</h2>
+            <div id="msg-login" class="mensagem"></div>
+            <div class="grupo-form">
+                <label>E-mail institucional</label>
+                <input type="email" id="email-login">
+            </div>
+            <div class="grupo-form">
+                <label>Senha</label>
+                <input type="password" id="senha-login">
+            </div>
+            <button class="btn-principal" onclick="logar()">🔑 Entrar</button>
+            <a href="#" class="link-recuperar" onclick="mostrarPagina('recuperar'); return false;">❓ Esqueci minha senha</a>
+        </div>
+    </div>
+
+    <!-- PÁGINA: RECUPERAR SENHA -->
+    <div class="pagina" id="pagina-recuperar">
+        <div class="card">
+            <h2>📧 Recuperar Senha</h2>
+            <div id="msg-recuperar" class="mensagem"></div>
+            <div id="passo1" class="passo">
+                <h3>Passo 1 — Seu E-mail</h3>
+                <div class="grupo-form">
+                    <label>E-mail cadastrado no servidor da sua escola</label>
+                    <input type="email" id="email-recuperar" placeholder="Digite seu e-mail">
+                </div>
+                <button class="btn-aviso" onclick="gerarEEnviarCodigo()">📧 Enviar Código</button>
+            </div>
+            <div id="passo2" class="passo oculto">
+                <h3>Passo 2 — Confirme o Código</h3>
+                <div class="caixa-codigo">
+                    <p>📨 Confira seu e-mail e cole o código abaixo:</p>
+                    <div class="codigo-envio" id="codigo-mostrar"></div>
+                </div>
+                <div class="grupo-form">
+                    <label>Código recebido:</label>
+                    <input type="text" id="codigo-digitado" class="codigo" maxlength="6" placeholder="000000">
+                </div>
+                <button class="btn-principal" onclick="verificarCodigo()">✅ Verificar</button>
+            </div>
+            <div id="passo3" class="passo oculto">
+                <h3>Passo 3 — Nova Senha</h3>
+                <div class="grupo-form">
+                    <label>Nova senha</label>
+                    <input type="password" id="nova-senha">
+                </div>
+                <div class="grupo-form">
+                    <label>Repita a senha</label>
+                    <input type="password" id="nova-senha2">
+                </div>
+                <button class="btn-sucesso" onclick="alterarSenha()">💾 Salvar</button>
+            </div>
+            <button class="btn-principal" style="margin-top: 20px; background: #64748b;" onclick="voltarRecuperar()">← Voltar</button>
+        </div>
+    </div>
+
+    <!-- PÁGINA: OBJETOS -->
+    <div class="pagina" id="pagina-objetos">
+        <h2>📦 Objetos — Servidor: <span id="titulo-servidor"></span></h2>
+        <p style="color:#64748b; margin-bottom:15px;">Apenas dados do servidor desta escola são exibidos aqui.</p>
+        <div class="card grade-objetos" id="lista-objetos"></div>
+    </div>
+
+    <!-- PÁGINA: CADASTRAR OBJETO -->
+    <div class="pagina" id="pagina-cadastrar-objeto">
+        <div class="card">
+            <h2>📤 Publicar Objeto</h2>
+            <p style="color:#64748b; margin-bottom:15px;">Será visível apenas no servidor da sua escola.</p>
+            <div id="msg-objeto" class="mensagem"></div>
+            <div class="grupo-form">
+                <label>Tipo</label>
+                <select id="tipo-objeto">
+                    <option value="perdido">Perdi</option>
+                    <option value="encontrado">Encontrei</option>
+                </select>
+            </div>
+            <div class="grupo-form">
+                <label>Título</label>
+                <input type="text" id="titulo" placeholder="Ex: Caderno azul">
+            </div>
+            <div class="grupo-form">
+                <label>Descrição</label>
+                <textarea id="descricao" rows="4" placeholder="Detalhes..."></textarea>
+            </div>
+            <div class="grupo-form">
+                <label>Local</label>
+                <input type="text" id="local" placeholder="Ex: Pátio">
+            </div>
+            <div class="grupo-form">
+                <label>Imagem (opcional)</label>
+                <input type="url" id="imagem" placeholder="https://...">
+            </div>
+            <button class="btn-sucesso" onclick="publicarObjeto()">✅ Publicar no Servidor</button>
+        </div>
+    </div>
+
+    <!-- PÁGINA: CHAT -->
+    <div class="pagina" id="pagina-chat">
+        <h2>💬 Chat — Servidor: <span id="titulo-chat-servidor"></span></h2>
+        <p style="color:#64748b; margin-bottom:15px;">Apenas alunos do servidor da sua escola participam.</p>
+        <div class="area-chat" id="caixa-chat"></div>
+        <div class="card" style="padding:12px;">
+            <input type="text" id="entrada-mensagem" placeholder="Digite sua mensagem..." onkeypress="if(event.key==='Enter')enviarMensagem()">
+            <button class="btn-principal" onclick="enviarMensagem()">Enviar</button>
+        </div>
+    </div>
+
+    <!-- PÁGINA: PERFIL -->
+    <div class="pagina" id="pagina-perfil">
+        <div class="card">
+            <h2>👤 Meu Perfil</h2>
+            <div class="perfil-item"><strong>Servidor (Escola):</strong> <span id="p-escola"></span></div>
+            <div class="perfil-item"><strong>Nome:</strong> <span id="p-nome"></span></div>
+            <div class="perfil-item"><strong>E-mail:</strong> <span id="p-email"></span></div>
+            <div class="perfil-item"><strong>Telefone:</strong> <span id="p-telefone"></span></div>
+            <div class="perfil-item"><strong>Publicações neste servidor:</strong> <span id="p-contagem">0</span></div>
+        </div>
+    </div>
+
+    <!-- PÁGINA: SOBRE -->
+    <div class="pagina" id="pagina-sobre">
+        <div class="card">
+            <h2>ℹ️ Sobre o Sistema</h2>
+            <p>Cada escola da Rede Estadual tem seu <strong>próprio servidor independente</strong>.</p>
+            <br>
+            <h3>🖥️ Como funciona:</h3>
+            <ul style="margin-left:20px; line-height:1.8;">
+                <li>Cadastrando-se com o nome da sua escola, você acessa o servidor exclusivo dela</li>
+                <li><strong>Objetos, mensagens e alunos</strong> ficam restritos ao servidor da escola</li>
+                <li>Servidor da Escola A não vê e não se comunica com o Servidor da Escola B</li>
+                <li>Isolamento total de dados entre servidores de escolas diferentes</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+// === DADOS GLOBAIS ===
+let usuarioAtual = null
+let codigoGerado = ""
+let emailAlvo = ""
+
+// === INICIALIZAÇÃO ===
+window.onload = () => {
+    carregarDados()
+    document.getElementById('nascimento').addEventListener('change', calcularIdade)
+    mostrarPagina('cadastro')
+}
+
+// === ARMAZENAMENTO — DADOS SEPARADOS POR SERVIDOR (ESCOLA) ===
+function salvarDados() {
+    localStorage.setItem('usuarios', JSON.stringify(usuarios))
+    localStorage.setItem('objetos', JSON.stringify(objetos))
+    localStorage.setItem('mensagens', JSON.stringify(mensagens))
+    if (usuarioAtual) {
+        localStorage.setItem('logado', usuarioAtual.email)
+        localStorage.setItem('servidorAtual', usuarioAtual.escola)
+    } else {
+        localStorage.removeItem('logado')
+        localStorage.removeItem('servidorAtual')
+    }
+}
+
+function carregarDados() {
+    usuarios = JSON.parse(localStorage.getItem('usuarios') || '[]')
+    objetos = JSON.parse(localStorage.getItem('objetos') || '[]')
+    mensagens = JSON.parse(localStorage.getItem('mensagens') || '[]')
+    const emailSalvo = localStorage.getItem('logado')
+    if (emailSalvo) {
+        usuarioAtual = usuarios.find(u => u.email === emailSalvo)
+        if (usuarioAtual) entrarServidorEscola()
+    }
+}
+
+// === VALIDAÇÃO ===
+function validarEmail(email) {
+    const regex = /^000011[0-9]+[0-9Xx](sp|SP)@al\.educacao\.sp\.gov\.br$/
+    return regex.test(email)
+}
+
+function validarEscola(nome) {
+    return /^(E\.E|E\.M|E\.F|E\.P)/i.test(nome.trim())
+}
+
+function validarTelefone(tel) {
+    const limpo = tel.replace(/\D/g, '')
+    return /^1[1-9]9\d{8}$/.test(limpo)
+}
+
+function calcularIdade() {
+    const nasc = document.getElementById('nascimento').value
+    if (!nasc) return
+    const hoje = new Date(), nascimento = new Date(nasc)
+    let idade = hoje.getFullYear() - nascimento.getFullYear()
+    const m = hoje.getMonth() - nascimento.getMonth()
+    if (m < 0 || (m === 0 && hoje.getDate() < nascimento.getDate())) idade--
+    document.getElementById('idade-mostrar').textContent = `Idade: ${idade} anos`
+}
+
+// === NAVEGAÇÃO ===
+function mostrarPagina(nome) {
+    document.querySelectorAll('.pagina').forEach(p => p.classList.remove('visivel'))
+    document.getElementById(`pagina-${nome}`).classList.add('visivel')
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('ativo'))
+    const botao = document.getElementById(`btn-${nome}`)
+    if (botao) botao.classList.add('ativo')
+    
+    if (nome === 'objetos') renderizarObjetos()
+    if (nome === 'chat') renderizarChat()
+    if (nome === 'perfil') preencherPerfil()
+}
+
+// === CADASTRO — ENTRA NO SERVIDOR DA ESCOLA ===
+let usuarios = []
+let objetos = []
+let mensagens = []
+
+function cadastrar() {
+    const nome = document.getElementById('nome').value.trim()
+    const nascimento = document.getElementById('nascimento').value
+    const email = document.getElementById('email').value.trim()
+    const escola = document.getElementById('escola').value.trim()
+    const telefone = document.getElementById('telefone').value.trim()
+    const senha = document.getElementById('senha').value
+
+    const msg = document.getElementById('msg-cadastro')
+    msg.className = 'mensagem'
+
+    if (!nome || !nascimento || !email || !escola || !telefone || !senha)
+        return msg.textContent = 'Preencha todos os campos!', msg.classList.add('erro')
+    if (!validarEmail(email))
+        return msg.textContent = 'E-mail inválido! Formato: 000011...@al.educacao.sp.gov.br', msg.classList.add('erro')
+    if (!validarEscola(escola))
+        return msg.textContent = 'Nome da escola deve começar com E.E / E.M / E.F / E.P', msg.classList.add('erro')
+    if (!validarTelefone(telefone))
+        return msg.textContent = 'Telefone inválido! DDD (11-19) + 9 + 8 dígitos', msg.classList.add('erro')
+    if (senha.length < 6)
+        return msg.textContent = 'Senha precisa ter pelo menos 6 caracteres', msg.classList.add('erro')
+    if (usuarios.find(u => u.email === email))
+        return msg.textContent = 'Esse e-mail já está cadastrado em algum servidor!', msg.classList.add('erro')
+
+    usuarios.push({ nome, nascimento, email, escola, telefone, senha, dataCadastro: new Date().toISOString() })
+    salvarDados()
+    msg.textContent = `✅ Cadastrado! Você entrou no SERVIDOR de: ${escola}`
+    msg.classList.add('sucesso')
+    setTimeout(() => mostrarPagina('login'), 1800)
+}
+
+// === LOGIN — ACESSA O SERVIDOR DA ESCOLA ===
+function logar() {
+    const email = document.getElementById('email-login').value.trim()
+    const senha = document.getElementById('senha-login').value
+    const msg = document.getElementById('msg-login')
+    const usuario = usuarios.find(u => u.email === email && u.senha === senha)
+    if (!usuario) return msg.textContent = 'E-mail ou senha incorretos', msg.classList.add('erro')
+    usuarioAtual = usuario
+    entrarServidorEscola()
+}
+
+// === ENTRAR NO SERVIDOR ===
+function entrarServidorEscola() {
+    // Mostra em QUAL SERVIDOR está conectado
+    document.getElementById('nome-servidor-escola').textContent = usuarioAtual.escola
+    document.getElementById('caixa-servidor').classList.remove('oculto')
+    document.getElementById('titulo-servidor').textContent = usuarioAtual.escola
+    document.getElementById('titulo-chat-servidor').textContent = usuarioAtual.escola
+    
+    // Mostra menus do sistema
+    document.getElementById('btn-objetos').classList.remove('oculto')
+    document.getElementById('btn-novo').classList.remove('oculto')
+    document.getElementById('btn-chat').classList.remove('oculto')
+    document.getElementById('btn-perfil').classList.remove('oculto')
+    document.getElementById('btn-sair').classList.remove('oculto')
+    document.getElementById('btn-cadastro').classList.add('oculto')
+    document.getElementById('btn-login').classList.add('oculto')
+    
+    salvarDados()
+    mostrarPagina('objetos')
+}
+
+// === SAIR DO SERVIDOR ===
+function sair() {
+    usuarioAtual = null
+    salvarDados()
+    document.getElementById('caixa-servidor').classList.add('oculto')
+    document.getElementById('btn-objetos').classList.add('oculto')
+    document.getElementById('btn-novo').classList.add('oculto')
+    document.getElementById('btn-chat').classList.add('oculto')
+    document.getElementById('btn-perfil').classList.add('oculto')
+    document.getElementById('btn-sair').classList.add('oculto')
+    document.getElementById('btn-cadastro').classList.remove('oculto')
+    document.getElementById('btn-login').classList.remove('oculto')
+    mostrarPagina('login')
+}
+
+// === RECUPERAR SENHA ===
+function gerarCodigo6Digitos() {
+    return Math.floor(100000 + Math.random() * 900000).toString()
+}
+
+function gerarEEnviarCodigo() {
+    const email = document.getElementById('email-recuperar').value.trim()
+    const msg = document.getElementById('msg-recuperar')
+    msg.className = 'mensagem'
+
+    if (!email) return msg.textContent = 'Digite seu e-mail!', msg.classList.add('erro')
+    const usuario = usuarios.find(u => u.email === email)
+    if (!usuario) return msg.textContent = '❌ E-mail não encontrado em nenhum servidor!', msg.classList.add('erro')
+
+    codigoGerado = gerarCodigo6Digitos()
+    emailAlvo = email
+
+    const assunto = encodeURIComponent('Código de Recuperação — Servidor Escolar')
+    const corpo = encodeURIComponent(`Servidor: ${usuario.escola}\n\nSeu código é: ${codigoGerado}`)
+    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${email}&su=${assunto}&body=${corpo}`, '_blank')
+
+    msg.textContent = `✅ E-mail aberto! (Servidor: ${usuario.escola})`
+    msg.classList.add('sucesso')
+    document.getElementById('codigo-mostrar').textContent = codigoGerado
+    document.getElementById('passo1').classList.add('oculto')
+    document.getElementById('passo2').classList.remove('oculto')
+}
+
+function verificarCodigo() {
+    const digitado = document.getElementById('codigo-digitado').value.trim()
+    const msg = document.getElementById('msg-recuperar')
+    if (digitado === codigoGerado) {
+        msg.textContent = '✅ Código confirmado! Defina sua nova senha:'
+        msg.classList.add('sucesso')
+        document.getElementById('passo2').classList.add('oculto')
+        document.getElementById('passo3').classList.remove('oculto')
+    } else {
+        msg.textContent = '❌ Código incorreto!', msg.classList.add('erro')
+    }
+}
+
+function alterarSenha() {
+    const senha1 = document.getElementById('nova-senha').value
+    const senha2 = document.getElementById('nova-senha2').value
+    const msg = document.getElementById('msg-recuperar')
+    if (senha1.length < 6) return msg.textContent = 'Mínimo 6 caracteres!', msg.classList.add('erro')
+    if (senha1 !== senha2) return msg.textContent = 'As senhas não coincidem!', msg.classList.add('erro')
+
+    const indice = usuarios.findIndex(u => u.email === emailAlvo)
+    if (indice !== -1) {
+        usuarios[indice].senha = senha1
+        salvarDados()
+        msg.textContent = '✅ Senha alterada! Faça login no servidor.'
+        msg.classList.add('sucesso')
+        codigoGerado = emailAlvo = ""
+        setTimeout(() => {
+            document.getElementById('passo1').classList.remove('oculto')
+            document.getElementById('passo2').classList.add('oculto')
+            document.getElementById('passo3').classList.add('oculto')
+            mostrarPagina('login')
+        }, 2000)
+    }
+}
+
+function voltarRecuperar() {
+    codigoGerado = emailAlvo = ""
+    document.getElementById('email-recuperar').value = ""
+    document.getElementById('codigo-digitado').value = ""
+    document.getElementById('nova-senha').value = ""
+    document.getElementById('nova-senha2').value = ""
+    document.getElementById('passo1').classList.remove('oculto')
+    document.getElementById('passo2').classList.add('oculto')
+    document.getElementById('passo3').classList.add('oculto')
+    document.getElementById('msg-recuperar').className = 'mensagem'
+    mostrarPagina('login')
+}
+
+// === OBJETOS — ISOLADO POR SERVIDOR (ESCOLA) ===
+function publicarObjeto() {
+    const tipo = document.getElementById('tipo-objeto').value
+    const titulo = document.getElementById('titulo').value.trim()
+    const descricao = document.getElementById('descricao').value.trim()
+    const local = document.getElementById('local').value.trim()
+    const imagem = document.getElementById('imagem').value.trim()
+    const msg = document.getElementById('msg-objeto')
+
+    if (!titulo || !descricao || !local)
+        return msg.textContent = 'Preencha título, descrição e local', msg.classList.add('erro')
+
+    // ✅ VINCULADO AO SERVIDOR DA ESCOLA DO USUÁRIO
+    objetos.push({
+        tipo, titulo, descricao, local, imagem,
+        servidorEscola: usuarioAtual.escola, // ← DADOS DO SERVIDOR
+        autor: usuarioAtual.nome,
+        data: new Date().toISOString()
+    })
+    salvarDados()
+    msg.textContent = `✅ Publicado no servidor de: ${usuarioAtual.escola}`
+    msg.classList.add('sucesso')
+    setTimeout(() => { mostrarPagina('objetos'); document.getElementById('msg-objeto').className = 'mensagem' }, 1200)
+}
+
+function renderizarObjetos() {
+    const lista = document.getElementById('lista-objetos')
+    const agora = new Date()
+    
+    // ✅ SÓ MOSTRA DADOS DESTE SERVIDOR (ESCOLA)
+    const filtrados = objetos
+        .filter(o => o.servidorEscola === usuarioAtual.escola) // ← ISOLAMENTO TOTAL
+        .filter(o => (agora - new Date(o.data)) / (1000 * 60 * 60 * 24) < 30)
+        .sort((a, b) => new Date(b.data) - new Date(a.data))
+
+    if (!filtrados.length) return lista.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#64748b;">Nenhum objeto publicado neste servidor.</p>'
+    
+    lista.innerHTML = filtrados.map(o => {
+        const dias = Math.ceil(30 - ((agora - new Date(o.data)) / (1000 * 60 * 60 * 24)))
+        const urgente = dias <= 5 ? 'urgente' : ''
+        return `
+        <div class="card-objeto">
+            ${o.imagem ? `<img src="${o.imagem}" alt="${o.titulo}">` : ''}
+            <div class="card-conteudo">
+                <span class="etiqueta ${o.tipo}">${o.tipo === 'perdido' ? '❌ Perdido' : '✅ Encontrado'}</span>
+                <h3>${o.titulo}</h3>
+                <p>${o.descricao}</p>
+                <p><strong>Local:</strong> ${o.local}</p>
+                <p><small>Publicado por ${o.autor}</small></p>
+                <p class="expira ${urgente}">Expira em ${dias} dia(s)</p>
+            </div>
+        </div>`
+    }).join('')
+}
+
+// === CHAT — ISOLADO POR SERVIDOR + APAGAR MENSAGEM ===
+function enviarMensagem() {
+    const entrada = document.getElementById('entrada-mensagem')
+    const texto = entrada.value.trim()
+    if (!texto) return
+    
+    // ✅ MENSAGEM VINCULADA AO SERVIDOR DA ESCOLA
+    mensagens.push({
+        id: Date.now(),
+        texto,
+        servidorEscola: usuarioAtual.escola, // ← ISOLAMENTO
+        autor: usuarioAtual.nome,
+        data: new Date().toISOString()
+    })
+    entrada.value = ''
+    salvarDados()
+    renderizarChat()
+}
+
+// ✅ APAGAR mensagem (só do próprio usuário)
+function apagarMensagem(idMensagem) {
+    if (confirm('Tem certeza que deseja apagar esta mensagem?')) {
+        mensagens = mensagens.filter(m => m.id !== idMensagem)
+        salvarDados()
+        renderizarChat()
+    }
+}
+
+// ✅ SÓ CARREGA MENSAGENS DO SERVIDOR DA ESCOLA
+function renderizarChat() {
+    const caixa = document.getElementById('caixa-chat')
+    const filtradas = mensagens.filter(m => m.servidorEscola === usuarioAtual.escola) // ← ISOLAMENTO
+    
+    caixa.innerHTML = filtradas.map(m => {
+        const minha = m.autor === usuarioAtual.nome
+        return `<div class="mensagem-chat ${minha ? 'enviada' : 'recebida'}">
+            ${minha ? `<button class="btn-apagar" onclick="apagarMensagem(${m.id})">×</button>` : ''}
+            ${!minha ? `<div class="info-usuario">${m.autor}</div>` : ''}
+            ${m.texto}
+        </div>`
+    }).join('')
+    caixa.scrollTop = caixa.scrollHeight
+}
+
+// === PERFIL ===
+function preencherPerfil() {
+    document.getElementById('p-nome').textContent = usuarioAtual.nome
+    document.getElementById('p-escola').textContent = usuarioAtual.escola
+    document.getElementById('p-email').textContent = usuarioAtual.email
+    document.getElementById('p-telefone').textContent = usuarioAtual.telefone
+    
+    // ✅ CONTAGEM SÓ DESTE SERVIDOR
+    const contagem = objetos.filter(o => o.servidorEscola === usuarioAtual.escola && o.autor === usuarioAtual.nome).length
+    document.getElementById('p-contagem').textContent = contagem
+}
+</script>
+</body>
+</html>
